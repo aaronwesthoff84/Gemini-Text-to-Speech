@@ -26,7 +26,7 @@ For developers who want to run the app on their own machine.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/gemini-text-to-speech.git
+git clone https://github.com/aaronwesthoff84/gemini-text-to-speech.git
 cd gemini-text-to-speech
 
 # 2. Set up your API Key
