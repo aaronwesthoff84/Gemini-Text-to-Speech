@@ -104,13 +104,58 @@ function convertToWav(rawData: string, mimeType: string): Blob {
 // --- React App Component ---
 
 const MAX_SCRIPT_LENGTH = 5000;
-const AVAILABLE_VOICES = [
-  { id: 'Zephyr', name: 'Zephyr' },
-  { id: 'Puck', name: 'Puck' },
-  { id: 'Charon', name: 'Charon' },
-  { id: 'Kore', name: 'Kore' },
-  { id: 'Fenrir', name: 'Fenrir' },
-  { id: 'Leda', name: 'Leda' },
+
+interface Voice {
+    id: string;
+    name: string;
+}
+
+interface VoiceGroup {
+    label: string;
+    voices: Voice[];
+}
+
+const VOICE_GROUPS: VoiceGroup[] = [
+    {
+        label: 'Female Voices',
+        voices: [
+            { id: 'Zephyr', name: 'Zephyr' },
+            { id: 'Kore', name: 'Kore' },
+            { id: 'Leda', name: 'Leda' },
+            { id: 'Aoede', name: 'Aoede' },
+            { id: 'Callirhoe', name: 'Callirhoe' },
+            { id: 'Autonoe', name: 'Autonoe' },
+            { id: 'Despina', name: 'Despina' },
+            { id: 'Erinome', name: 'Erinome' },
+            { id: 'Laomedeia', name: 'Laomedeia' },
+            { id: 'Pulcherrima', name: 'Pulcherrima' },
+            { id: 'Vindemiatrix', name: 'Vindemiatrix' },
+        ],
+    },
+    {
+        label: 'Male Voices',
+        voices: [
+            { id: 'Puck', name: 'Puck' },
+            { id: 'Charon', name: 'Charon' },
+            { id: 'Fenrir', name: 'Fenrir' },
+            { id: 'Orus', name: 'Orus' },
+            { id: 'Enceladus', name: 'Enceladus' },
+            { id: 'Iapetus', name: 'Iapetus' },
+            { id: 'Umbriel', name: 'Umbriel' },
+            { id: 'Algieba', name: 'Algieba' },
+            { id: 'Algenib', name: 'Algenib' },
+            { id: 'Rasalgethi', name: 'Rasalgethi' },
+            { id: 'Achernar', name: 'Achernar' },
+            { id: 'Alnilam', name: 'Alnilam' },
+            { id: 'Schedar', name: 'Schedar' },
+            { id: 'Gacrux', name: 'Gacrux' },
+            { id: 'Achird', name: 'Achird' },
+            { id: 'Zubenelgenubi', name: 'Zubenelgenubi' },
+            { id: 'Sadachbia', name: 'Sadachbia' },
+            { id: 'Sadaltager', name: 'Sadaltager' },
+            { id: 'Sulafar', name: 'Sulafar' },
+        ],
+    },
 ];
 
 const initialScript = `Hello, world. Welcome to the future of audio generation. Select a voice and hear me speak.`;
@@ -122,7 +167,7 @@ interface GeneratedAudio {
 
 const App = () => {
   const [script, setScript] = useState<string>(initialScript);
-  const [selectedVoice, setSelectedVoice] = useState<string>(AVAILABLE_VOICES[0].id);
+  const [selectedVoice, setSelectedVoice] = useState<string>(VOICE_GROUPS[0].voices[0].id);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [audios, setAudios] = useState<GeneratedAudio[]>([]);
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -235,8 +280,12 @@ const App = () => {
                 disabled={isLoading}
                 aria-label="Select voice"
             >
-                {AVAILABLE_VOICES.map(voice => (
-                    <option key={voice.id} value={voice.id}>{voice.name}</option>
+                {VOICE_GROUPS.map(group => (
+                    <optgroup key={group.label} label={group.label}>
+                        {group.voices.map(voice => (
+                            <option key={voice.id} value={voice.id}>{voice.name}</option>
+                        ))}
+                    </optgroup>
                 ))}
             </select>
         </div>
