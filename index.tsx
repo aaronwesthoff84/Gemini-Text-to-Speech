@@ -103,6 +103,13 @@ function convertToWav(rawData: string, mimeType: string): Blob {
 
 // --- React App Component ---
 
+const MAX_SCRIPT_LENGTH = 5000;
+const RECOGNIZED_VOICES = [
+  { speaker: 'leda', voiceName: 'Leda' },
+  { speaker: 'Fenrir', voiceName: 'Fenrir' },
+];
+const RECOGNIZED_SPEAKERS = RECOGNIZED_VOICES.map(v => v.speaker);
+
 const initialScript = `leda: "Hello, world."
 Fenrir: "Welcome to the future of audio generation."`;
 
@@ -119,10 +126,35 @@ const App = () => {
   const [error, setError] = useState<string>('');
 
   const handleGenerateAudio = useCallback(async () => {
+    // --- Input Validation ---
     if (!script.trim()) {
-      setError("Please enter some text to generate audio.");
+      setError("Please enter a script to generate audio.");
       return;
     }
+
+    if (script.length > MAX_SCRIPT_LENGTH) {
+      setError(`Script exceeds the maximum length of ${MAX_SCRIPT_LENGTH} characters.`);
+      return;
+    }
+
+    const lines = script.split('\n');
+    const unrecognizedSpeakers = new Set<string>();
+
+    for (const line of lines) {
+      const match = line.match(/^\s*([a-zA-Z0-9]+):/);
+      if (match && match[1]) {
+        const speaker = match[1];
+        if (!RECOGNIZED_SPEAKERS.includes(speaker)) {
+          unrecognizedSpeakers.add(speaker);
+        }
+      }
+    }
+
+    if (unrecognizedSpeakers.size > 0) {
+      setError(`Unrecognized speaker(s): ${[...unrecognizedSpeakers].join(', ')}. Available speakers are: ${RECOGNIZED_SPEAKERS.join(', ')}.`);
+      return;
+    }
+    // --- End Validation ---
 
     setIsLoading(true);
     setAudios([]);
@@ -131,19 +163,16 @@ const App = () => {
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // NOTE: 'gemini-2.5-pro-preview-tts' is a model specified in the user's code snippet.
-      // Its availability may vary, and a different model may be required.
       const model = 'gemini-2.5-pro-preview-tts';
       
       const config = {
-        // The modality must be Modality.AUDIO for text-to-speech.
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           multiSpeakerVoiceConfig: {
-            speakerVoiceConfigs: [
-              { speaker: 'leda', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Leda' } } },
-              { speaker: 'Fenrir', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Fenrir' } } },
-            ]
+            speakerVoiceConfigs: RECOGNIZED_VOICES.map(({ speaker, voiceName }) => ({
+              speaker,
+              voiceConfig: { prebuiltVoiceConfig: { voiceName } }
+            })),
           },
         },
       };
@@ -158,27 +187,26 @@ const App = () => {
 
       let fileIndex = 0;
       setStatusMessage('Receiving audio stream...');
+      const newAudios: GeneratedAudio[] = [];
 
       for await (const chunk of responseStream) {
         const inlineData = chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData;
         if (inlineData?.data && inlineData?.mimeType) {
           
           let audioBlob: Blob;
-          // The snippet suggests the raw audio is PCM and needs a WAV header.
           if (inlineData.mimeType.startsWith('audio/L')) {
              audioBlob = convertToWav(inlineData.data, inlineData.mimeType);
           } else {
-             // If it's already a standard format, create a blob directly.
              const audioData = base64ToUint8Array(inlineData.data);
              audioBlob = new Blob([audioData], { type: inlineData.mimeType });
           }
           
           const url = URL.createObjectURL(audioBlob);
-          const newAudio: GeneratedAudio = {
+          newAudios.push({
             name: `audio_chunk_${fileIndex++}.wav`,
             url: url,
-          };
-          setAudios(prev => [...prev, newAudio]);
+          });
+          setAudios([...newAudios]);
           setStatusMessage(`Generated audio chunk ${fileIndex}.`);
         }
       }
@@ -197,7 +225,11 @@ const App = () => {
     <div className="app-container">
       <header>
         <h1>Gemini Text-to-Speech</h1>
-        <p className="description">Enter a script with speaker tags to generate multi-voice audio.</p>
+        <p className="description">
+            Enter a script with speaker tags to generate multi-voice audio.
+            <br/>
+            Available speakers: <strong>{RECOGNIZED_SPEAKERS.join(', ')}</strong>
+        </p>
       </header>
       <main>
         <div className="input-section">
@@ -210,6 +242,9 @@ const App = () => {
             aria-label="Script input for text to speech"
             placeholder="Enter your script here..."
           />
+           <div className={`char-counter ${script.length > MAX_SCRIPT_LENGTH ? 'error' : ''}`}>
+            {script.length} / {MAX_SCRIPT_LENGTH}
+          </div>
         </div>
         <div className="controls">
           <button onClick={handleGenerateAudio} disabled={isLoading}>
