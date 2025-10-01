@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Modality } from '@google/genai';
 
@@ -182,11 +183,37 @@ const App = () => {
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [theme, setTheme] = useState<string>(getInitialTheme);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<number | null>(null);
+  const [isAutoplayPending, setIsAutoplayPending] = useState<boolean>(false);
+  const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
+
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
+  
+  // Effect to handle starting the autoplay sequence
+  useEffect(() => {
+    if (audios.length > 0 && isAutoplayPending) {
+        setCurrentlyPlaying(0);
+        setIsAutoplayPending(false);
+    }
+  }, [audios, isAutoplayPending]);
+
+  // Effect to handle playing the current audio in the sequence
+  useEffect(() => {
+    if (currentlyPlaying !== null) {
+      const audioEl = audioRefs.current[currentlyPlaying];
+      if (audioEl) {
+        audioEl.play().catch(e => {
+          console.error("Audio autoplay failed.", e);
+          setError("Audio autoplay was blocked by the browser. Please press play manually.");
+          setCurrentlyPlaying(null);
+        });
+      }
+    }
+  }, [currentlyPlaying]);
 
   const toggleTheme = () => {
       setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
@@ -207,6 +234,8 @@ const App = () => {
 
     setIsLoading(true);
     setAudios([]);
+    setCurrentlyPlaying(null);
+    setIsAutoplayPending(true);
     setError('');
     setStatusMessage('Initializing audio generation...');
 
@@ -233,8 +262,7 @@ const App = () => {
 
       let fileIndex = 0;
       setStatusMessage('Receiving audio stream...');
-      const newAudios: GeneratedAudio[] = [];
-
+      
       for await (const chunk of responseStream) {
         const inlineData = chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData;
         if (inlineData?.data && inlineData?.mimeType) {
@@ -248,11 +276,12 @@ const App = () => {
           }
           
           const url = URL.createObjectURL(audioBlob);
-          newAudios.push({
+          const newAudio = {
             name: `audio_chunk_${fileIndex++}.wav`,
             url: url,
-          });
-          setAudios([...newAudios]);
+          };
+
+          setAudios(prev => [...prev, newAudio]);
           setStatusMessage(`Generated audio chunk ${fileIndex}.`);
         }
       }
@@ -332,7 +361,21 @@ const App = () => {
                 <li key={index} className="audio-item">
                   <span className="audio-info">{audio.name}</span>
                   <div className="audio-controls">
-                    <audio controls src={audio.url} aria-label={`Playback for ${audio.name}`}></audio>
+                    <audio
+                        // FIX: The ref callback for a DOM element should not return a value.
+                        // Using curly braces ensures the function has a void return type.
+                        ref={el => { audioRefs.current[index] = el; }}
+                        controls 
+                        src={audio.url} 
+                        aria-label={`Playback for ${audio.name}`}
+                        onEnded={() => {
+                            if (currentlyPlaying === index && index < audios.length - 1) {
+                                setCurrentlyPlaying(index + 1);
+                            } else if (currentlyPlaying === index) {
+                                setCurrentlyPlaying(null); // Playlist finished
+                            }
+                        }}
+                    ></audio>
                     <a href={audio.url} download={audio.name} className="download-btn" aria-label={`Download ${audio.name}`}>
                       Download
                     </a>
