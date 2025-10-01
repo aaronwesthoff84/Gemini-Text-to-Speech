@@ -105,6 +105,7 @@ function convertToWav(rawData: string, mimeType: string): Blob {
 // --- React App Component ---
 
 const MAX_SCRIPT_LENGTH = 5000;
+const FALLBACK_VOICE = 'Zephyr';
 
 interface Voice {
     id: string;
@@ -117,22 +118,6 @@ interface VoiceGroup {
 }
 
 const VOICE_GROUPS: VoiceGroup[] = [
-    {
-        label: 'Female Voices',
-        voices: [
-            { id: 'Zephyr', name: 'Zephyr' },
-            { id: 'Kore', name: 'Kore' },
-            { id: 'Leda', name: 'Leda' },
-            { id: 'Aoede', name: 'Aoede' },
-            { id: 'Callirhoe', name: 'Callirhoe' },
-            { id: 'Autonoe', name: 'Autonoe' },
-            { id: 'Despina', name: 'Despina' },
-            { id: 'Erinome', name: 'Erinome' },
-            { id: 'Laomedeia', name: 'Laomedeia' },
-            { id: 'Pulcherrima', name: 'Pulcherrima' },
-            { id: 'Vindemiatrix', name: 'Vindemiatrix' },
-        ],
-    },
     {
         label: 'Male Voices',
         voices: [
@@ -155,6 +140,22 @@ const VOICE_GROUPS: VoiceGroup[] = [
             { id: 'Sadachbia', name: 'Sadachbia' },
             { id: 'Sadaltager', name: 'Sadaltager' },
             { id: 'Sulafar', name: 'Sulafar' },
+        ],
+    },
+    {
+        label: 'Female Voices',
+        voices: [
+            { id: 'Zephyr', name: 'Zephyr' },
+            { id: 'Kore', name: 'Kore' },
+            { id: 'Leda', name: 'Leda' },
+            { id: 'Aoede', name: 'Aoede' },
+            { id: 'Callirhoe', name: 'Callirhoe' },
+            { id: 'Autonoe', name: 'Autonoe' },
+            { id: 'Despina', name: 'Despina' },
+            { id: 'Erinome', name: 'Erinome' },
+            { id: 'Laomedeia', name: 'Laomedeia' },
+            { id: 'Pulcherrima', name: 'Pulcherrima' },
+            { id: 'Vindemiatrix', name: 'Vindemiatrix' },
         ],
     },
 ];
@@ -239,6 +240,7 @@ const App = () => {
     setError('');
     setStatusMessage('Initializing audio generation...');
 
+    // --- First attempt with selected voice ---
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const model = 'gemini-2.5-pro-preview-tts';
@@ -254,6 +256,7 @@ const App = () => {
 
       const contents = [{ role: 'user', parts: [{ text: script }] }];
       
+      setStatusMessage(`Generating with voice: ${selectedVoice}...`);
       const responseStream = await ai.models.generateContentStream({
         model,
         contents,
@@ -261,8 +264,6 @@ const App = () => {
       });
 
       let fileIndex = 0;
-      setStatusMessage('Receiving audio stream...');
-      
       for await (const chunk of responseStream) {
         const inlineData = chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData;
         if (inlineData?.data && inlineData?.mimeType) {
@@ -288,9 +289,70 @@ const App = () => {
       setStatusMessage('Audio generation complete!');
 
     } catch (err) {
-      console.error(err);
-      setError(`An error occurred: ${(err as Error).message}`);
-      setStatusMessage('');
+      console.error(`Error with voice ${selectedVoice}:`, err);
+
+      // If the selected voice wasn't the fallback, try the fallback.
+      if (selectedVoice !== FALLBACK_VOICE) {
+        setStatusMessage(`Voice '${selectedVoice}' failed. Trying fallback voice '${FALLBACK_VOICE}'...`);
+        // Clear any partial results from the failed attempt
+        setAudios([]);
+
+        // --- Second attempt with fallback voice ---
+        try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const model = 'gemini-2.5-pro-preview-tts';
+          
+          const config = {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: FALLBACK_VOICE }
+                }
+            },
+          };
+
+          const contents = [{ role: 'user', parts: [{ text: script }] }];
+          
+          const responseStream = await ai.models.generateContentStream({
+            model,
+            contents,
+            config,
+          });
+
+          let fileIndex = 0;
+          for await (const chunk of responseStream) {
+            const inlineData = chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+            if (inlineData?.data && inlineData?.mimeType) {
+              
+              let audioBlob: Blob;
+              if (inlineData.mimeType.startsWith('audio/L')) {
+                 audioBlob = convertToWav(inlineData.data, inlineData.mimeType);
+              } else {
+                 const audioData = base64ToUint8Array(inlineData.data);
+                 audioBlob = new Blob([audioData], { type: inlineData.mimeType });
+              }
+              
+              const url = URL.createObjectURL(audioBlob);
+              const newAudio = {
+                name: `audio_chunk_${fileIndex++}.wav`,
+                url: url,
+              };
+
+              setAudios(prev => [...prev, newAudio]);
+              setStatusMessage(`Generated audio chunk ${fileIndex} with fallback.`);
+            }
+          }
+          setStatusMessage('Audio generation complete with fallback voice!');
+        } catch (fallbackErr) {
+            console.error(`Error with fallback voice ${FALLBACK_VOICE}:`, fallbackErr);
+            setError(`An error occurred: ${(fallbackErr as Error).message}`);
+            setStatusMessage('');
+        }
+      } else {
+        // The selected voice was already the fallback, so just fail.
+        setError(`An error occurred: ${(err as Error).message}`);
+        setStatusMessage('');
+      }
     } finally {
       setIsLoading(false);
     }
