@@ -104,14 +104,16 @@ function convertToWav(rawData: string, mimeType: string): Blob {
 // --- React App Component ---
 
 const MAX_SCRIPT_LENGTH = 5000;
-const RECOGNIZED_VOICES = [
-  { speaker: 'leda', voiceName: 'Leda' },
-  { speaker: 'Fenrir', voiceName: 'Fenrir' },
+const AVAILABLE_VOICES = [
+  { id: 'Zephyr', name: 'Zephyr' },
+  { id: 'Puck', name: 'Puck' },
+  { id: 'Charon', name: 'Charon' },
+  { id: 'Kore', name: 'Kore' },
+  { id: 'Fenrir', name: 'Fenrir' },
+  { id: 'Leda', name: 'Leda' },
 ];
-const RECOGNIZED_SPEAKERS = RECOGNIZED_VOICES.map(v => v.speaker);
 
-const initialScript = `leda: "Hello, world."
-Fenrir: "Welcome to the future of audio generation."`;
+const initialScript = `Hello, world. Welcome to the future of audio generation. Select a voice and hear me speak.`;
 
 interface GeneratedAudio {
   name: string;
@@ -120,6 +122,7 @@ interface GeneratedAudio {
 
 const App = () => {
   const [script, setScript] = useState<string>(initialScript);
+  const [selectedVoice, setSelectedVoice] = useState<string>(AVAILABLE_VOICES[0].id);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [audios, setAudios] = useState<GeneratedAudio[]>([]);
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -136,24 +139,6 @@ const App = () => {
       setError(`Script exceeds the maximum length of ${MAX_SCRIPT_LENGTH} characters.`);
       return;
     }
-
-    const lines = script.split('\n');
-    const unrecognizedSpeakers = new Set<string>();
-
-    for (const line of lines) {
-      const match = line.match(/^\s*([a-zA-Z0-9]+):/);
-      if (match && match[1]) {
-        const speaker = match[1];
-        if (!RECOGNIZED_SPEAKERS.includes(speaker)) {
-          unrecognizedSpeakers.add(speaker);
-        }
-      }
-    }
-
-    if (unrecognizedSpeakers.size > 0) {
-      setError(`Unrecognized speaker(s): ${[...unrecognizedSpeakers].join(', ')}. Available speakers are: ${RECOGNIZED_SPEAKERS.join(', ')}.`);
-      return;
-    }
     // --- End Validation ---
 
     setIsLoading(true);
@@ -168,12 +153,9 @@ const App = () => {
       const config = {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
-          multiSpeakerVoiceConfig: {
-            speakerVoiceConfigs: RECOGNIZED_VOICES.map(({ speaker, voiceName }) => ({
-              speaker,
-              voiceConfig: { prebuiltVoiceConfig: { voiceName } }
-            })),
-          },
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: selectedVoice }
+            }
         },
       };
 
@@ -219,16 +201,14 @@ const App = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [script]);
+  }, [script, selectedVoice]);
 
   return (
     <div className="app-container">
       <header>
         <h1>Gemini Text-to-Speech</h1>
         <p className="description">
-            Enter a script with speaker tags to generate multi-voice audio.
-            <br/>
-            Available speakers: <strong>{RECOGNIZED_SPEAKERS.join(', ')}</strong>
+            Enter some text, choose a voice, and listen to the generated audio.
         </p>
       </header>
       <main>
@@ -245,6 +225,20 @@ const App = () => {
            <div className={`char-counter ${script.length > MAX_SCRIPT_LENGTH ? 'error' : ''}`}>
             {script.length} / {MAX_SCRIPT_LENGTH}
           </div>
+        </div>
+        <div className="settings-section">
+            <label htmlFor="voice-select">Select a Voice</label>
+            <select
+                id="voice-select"
+                value={selectedVoice}
+                onChange={(e) => setSelectedVoice(e.target.value)}
+                disabled={isLoading}
+                aria-label="Select voice"
+            >
+                {AVAILABLE_VOICES.map(voice => (
+                    <option key={voice.id} value={voice.id}>{voice.name}</option>
+                ))}
+            </select>
         </div>
         <div className="controls">
           <button onClick={handleGenerateAudio} disabled={isLoading}>
