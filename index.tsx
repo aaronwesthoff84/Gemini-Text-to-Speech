@@ -160,7 +160,9 @@ const VOICE_GROUPS: VoiceGroup[] = [
     },
 ];
 
-const initialScript = `Welcome to the future of audio generation.`;
+const initialScript = `Read aloud in a warm, welcoming tone
+
+Welcome to the future of audio generation.`;
 
 interface GeneratedAudio {
   name: string;
