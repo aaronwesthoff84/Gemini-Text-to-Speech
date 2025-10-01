@@ -160,7 +160,7 @@ const VOICE_GROUPS: VoiceGroup[] = [
     },
 ];
 
-const initialScript = `Hello, world. Welcome to the future of audio generation. Select a voice and hear me speak.`;
+const initialScript = `Welcome to the future of audio generation.`;
 
 interface GeneratedAudio {
   name: string;
@@ -181,6 +181,7 @@ const App = () => {
   const [selectedVoice, setSelectedVoice] = useState<string>(VOICE_GROUPS[0].voices[0].id);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [audios, setAudios] = useState<GeneratedAudio[]>([]);
+  const [playbackSpeeds, setPlaybackSpeeds] = useState<number[]>([]);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [theme, setTheme] = useState<string>(getInitialTheme);
@@ -220,6 +221,16 @@ const App = () => {
       setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
+  const handleSpeedChange = (index: number, speed: number) => {
+    const audioEl = audioRefs.current[index];
+    if (audioEl) {
+        audioEl.playbackRate = speed;
+    }
+    const newSpeeds = [...playbackSpeeds];
+    newSpeeds[index] = speed;
+    setPlaybackSpeeds(newSpeeds);
+  };
+
   const handleGenerateAudio = useCallback(async () => {
     // --- Input Validation ---
     if (!script.trim()) {
@@ -235,6 +246,7 @@ const App = () => {
 
     setIsLoading(true);
     setAudios([]);
+    setPlaybackSpeeds([]);
     setCurrentlyPlaying(null);
     setIsAutoplayPending(true);
     setError('');
@@ -283,6 +295,7 @@ const App = () => {
           };
 
           setAudios(prev => [...prev, newAudio]);
+          setPlaybackSpeeds(prev => [...prev, 1]);
           setStatusMessage(`Generated audio chunk ${fileIndex}.`);
         }
       }
@@ -296,6 +309,7 @@ const App = () => {
         setStatusMessage(`Voice '${selectedVoice}' failed. Trying fallback voice '${FALLBACK_VOICE}'...`);
         // Clear any partial results from the failed attempt
         setAudios([]);
+        setPlaybackSpeeds([]);
 
         // --- Second attempt with fallback voice ---
         try {
@@ -339,6 +353,7 @@ const App = () => {
               };
 
               setAudios(prev => [...prev, newAudio]);
+              setPlaybackSpeeds(prev => [...prev, 1]);
               setStatusMessage(`Generated audio chunk ${fileIndex} with fallback.`);
             }
           }
@@ -423,9 +438,19 @@ const App = () => {
                 <li key={index} className="audio-item">
                   <span className="audio-info">{audio.name}</span>
                   <div className="audio-controls">
+                    <select
+                        className="speed-control"
+                        title="Playback Speed"
+                        value={playbackSpeeds[index] || 1}
+                        onChange={(e) => handleSpeedChange(index, parseFloat(e.target.value))}
+                        aria-label={`Playback speed for ${audio.name}`}
+                    >
+                        <option value="0.5">0.5x</option>
+                        <option value="1">1x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2.0x</option>
+                    </select>
                     <audio
-                        // FIX: The ref callback for a DOM element should not return a value.
-                        // Using curly braces ensures the function has a void return type.
                         ref={el => { audioRefs.current[index] = el; }}
                         controls 
                         src={audio.url} 
