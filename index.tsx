@@ -458,7 +458,9 @@ const App = () => {
                     </select>
                     <audio
                         ref={el => { audioRefs.current[index] = el; }}
-                        controls 
+                        controls
+                        controlsList="nodownload"
+                        controlsList="noplaybackspeed"
                         src={audio.url} 
                         aria-label={`Playback for ${audio.name}`}
                         onEnded={() => {
