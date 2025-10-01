@@ -13,31 +13,85 @@ A powerful web application that converts text into high-quality, natural-soundin
 -   **Light & Dark Mode**: A sleek, modern UI that adapts to your system's theme.
 -   **Responsive Design**: Works beautifully on both desktop and mobile devices.
 
-## 🚀 Quick Start
+## 🚀 How to Run
 
-### Option 1: Run in Google AI Studio
-The easiest way to get started.
-1.  Open this project in **Google AI Studio**.
-2.  Configure your Gemini API key in the studio's secrets manager.
-3.  Click the **Run** button to launch the application instantly.
+### Option 1: In Google AI Studio (Recommended)
 
-### Option 2: Run Locally from GitHub
-For developers who want to run the app on their own machine.
+The easiest way to get started, with no setup required.
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/aaronwesthoff84/gemini-text-to-speech.git
-cd gemini-text-to-speech
+1.  **Open in AI Studio**: Open this project directly in **Google AI Studio**.
+2.  **Add API Key**: In the left panel, navigate to the "Secrets" section (it looks like a key icon 🔑). Add a new secret named `API_KEY` and paste your Google Gemini API key as the value.
+3.  **Run**: Click the **Run** button at the top of the interface. The application will start in a new panel within AI Studio.
 
-# 2. Set up your API Key
-# The app is designed to run in an environment where process.env.API_KEY is available.
-# You will need to configure this for your local setup.
+### Option 2: On Your Local Machine
 
-# 3. Serve the application
-# Use any simple static file server. For example, with Python:
-python -m http.server 8000
-```
-Then, open `http://localhost:8000` in your browser.
+For developers who want to run and modify the code locally.
+
+**Prerequisites:**
+*   [Git](https://git-scm.com/) installed to clone the repository.
+*   A simple web server. We provide instructions for Python's built-in server and a Node.js-based one.
+
+**Step-by-Step Instructions:**
+
+1.  **Clone the Repository**
+    Open your terminal or command prompt and run the following command to download the project files:
+    ```bash
+    git clone https://github.com/aaronwesthoff84/Gemini-Text-to-Speech
+    ```
+
+2.  **Navigate to the Project Directory**
+    Change your current directory to the newly created project folder:
+    ```bash
+    cd aistudio-gemini-text-to-speech-react
+    ```
+    All subsequent commands should be run from inside this directory.
+
+3.  **Configure Your API Key**
+    This application needs your Google Gemini API key to work. For local development, you need to add it directly to the code.
+
+    *   Open the `index.tsx` file in a text editor.
+    *   Find the line that contains `process.env.API_KEY`. It will be inside the `handleGenerateAudio` function.
+    *   Replace `process.env.API_KEY` with your actual API key in quotes.
+
+        **Change this:**
+        ```javascript
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        ```
+        **To this:**
+        ```javascript
+        // ⚠️ IMPORTANT: Replace with your actual key for local testing
+        const ai = new GoogleGenAI({ apiKey: 'YOUR_GEMINI_API_KEY_HERE' });
+        ```
+    > **Security Warning**: Do not commit this change or share your code publicly with the API key inside it. This method is only for local testing. Always remove your key before pushing changes to a public repository like GitHub.
+
+4.  **Start the Local Web Server**
+    This project is a static website and needs to be served by a web server to function correctly (you cannot just open `index.html` from your file system).
+
+    Choose **one** of the following methods from your terminal:
+
+    *   **Using Python (if you have Python installed):**
+        ```bash
+        # For Python 3
+        python3 -m http.server
+        
+        # Or for Python 2
+        python -m SimpleHTTPServer
+        ```
+
+    *   **Using Node.js (if you have Node.js and npm installed):**
+        This command uses `npx` to run a server without installing it globally.
+        ```bash
+        npx serve
+        ```
+
+5.  **Open the Application**
+    Once the server is running, it will print a local address in your terminal. It will likely be one of these:
+    *   `http://localhost:8000`
+    *   `http://127.0.0.1:8000`
+    *   `http://localhost:3000` (if using `npx serve`)
+
+    Open this URL in your web browser to use the application.
+
 
 ## 📁 Repository Structure
 
